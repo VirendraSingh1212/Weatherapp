@@ -1,21 +1,39 @@
-const API_KEY = 'fd2e1dab64862c77bd1e60f96a6678e8';
-const BASE_URL = 'http://api.weatherstack.com';
+// Use environment variable for API key, fallback to hardcoded for development
+const API_KEY = import.meta.env.VITE_WEATHERSTACK_API_KEY || 'fd2e1dab64862c77bd1e60f96a6678e8';
+
+// Detect if we're in production (Vercel) or development
+const isProduction = import.meta.env.PROD;
+
+// In production, use the Vercel serverless proxy
+// In development, call the API directly
+const BASE_URL = isProduction ? '/api/weather' : 'http://api.weatherstack.com';
 
 // Helper function to make API requests
 const fetchWeatherData = async (endpoint, params = {}) => {
-  const queryParams = new URLSearchParams({
-    access_key: API_KEY,
-    ...params
-  });
+  let url;
   
-  const url = `${BASE_URL}/${endpoint}?${queryParams}`;
+  if (isProduction) {
+    // Use Vercel serverless proxy
+    const queryParams = new URLSearchParams({
+      endpoint,
+      ...params
+    });
+    url = `${BASE_URL}?${queryParams}`;
+  } else {
+    // Direct API call for development
+    const queryParams = new URLSearchParams({
+      access_key: API_KEY,
+      ...params
+    });
+    url = `${BASE_URL}/${endpoint}?${queryParams}`;
+  }
   
   try {
     const response = await fetch(url);
     const data = await response.json();
     
     if (data.error) {
-      throw new Error(data.error.info || 'Weather API error');
+      throw new Error(data.info || 'Weather API error');
     }
     
     return data;
